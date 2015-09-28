@@ -31,9 +31,16 @@ typedef enum IOState {
 		
 /******************************************************************************************************/
 //General Defines
-#define UDPPORTNUMBER				8000
+#define UDPPORTNUMBER				5060
 #define TCPPORTNUMBER				9000
+#define UDPSIGNALINGPORT			5060
 
+#define REGISTRATION				0x04
+#define KEEPALIVE					0x03
+
+#define MACLEN						6	
+#define IPLEN						4
+#define NAMELEN						20
 /******************************************************************************************************/
 //General Macros 
 
@@ -45,8 +52,19 @@ typedef enum IOState {
 #define SI_RESET		14
 
 //Port D
+#define DOUT			9
 #define HT9032_PWRDOWN	10
 #define HT9032_RING		11
 
+#define  PrintDebug(...) {\
+						USART3 -> BRR = 0x00000145;\
+						delay(2);\
+						printf(__VA_ARGS__);\
+						delay(2);\
+						USART3 -> BRR = 0x00007A12;\
+						}
+
 
 #endif 
+						
+						
