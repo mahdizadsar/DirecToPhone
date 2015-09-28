@@ -35,8 +35,14 @@ typedef enum IOState {
 #define TCPPORTNUMBER				9000
 #define UDPSIGNALINGPORT			5060
 
+#define UDPMEDIAPORT				8000
+
 #define REGISTRATION				0x04
 #define KEEPALIVE					0x03
+#define OFFHOOK						0xFE
+#define ONHOOK						0xFF
+#define CALL						0x05
+
 
 #define MACLEN						6	
 #define IPLEN						4

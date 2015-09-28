@@ -136,13 +136,16 @@ uint32 i,j,k,l;
 
 uint8 tcp_soc;
 uint8 udp_soc;
+uint8 udp_media_soc;
 uint16 DataRead[3],Data3;
 uint16 TCPRxTcpDataCount;
 uint8 *TCPRxDataPtr;
 boolean DataReceivedFlag;
 uint8 UdpPacket[1000];
+uint8 MediaBuffer[256];
 enmDeviceState_t DeviceState;
 uint8 UdpRecieved;
+uint8 UdpMediaRecieved;
 uint8 *BufferPtr2;
 
 //--------------------------------------
@@ -233,6 +236,19 @@ U16 udp_callback (U8 socket, U8 *remip, U16 remport, U8 *buf, U16 len) {
 }
 
 
+
+/******************************************************************************************************/
+
+U16 udp_media_callback (U8 socket, U8 *remip, U16 remport, U8 *buf, U16 len) {
+  /* This function is called when UDP data is received */
+	uint32 i;
+	
+  /* Process received data from 'buf' */
+	memcpy(MediaBuffer,buf,len);
+	UdpMediaRecieved = True;
+	
+	return (0);
+}
 /******************************************************************************************************/
 
 void delay (uint32 time){
@@ -378,6 +394,32 @@ void KeepAliveFunction(void){
 }
 /******************************************************************************************************/
 
+void OffHookFunction(void){
+	SetResetIO(GPIOE, SI_OFHK, enmReset);		//Go to OFF-HOOK
+	DeviceState = enmOffHook;
+}
+
+/******************************************************************************************************/
+
+void OnHookFunction(void){
+	SetResetIO(GPIOE, SI_OFHK, enmSet);			//Go to ON-HOOK
+	DeviceState = enmOnHook;
+}
+
+/******************************************************************************************************/
+void CallFunction(void){
+	PrintDebug("\nCall Number:");
+	for (i = 0 ; i < Packet.Len ; i++)
+		PrintDebug("%c",Packet.Data[i]);
+	
+	OffHookFunction();
+	for (i = 0 ; i < Packet.Len ; i++){
+		SendDtmfTone((uint16*)DtmfCode[Packet.Data[i]]);
+		delay(50);
+	}
+}
+/******************************************************************************************************/
+
 boolean UdpCommandParser(void){
 	uint16 UdpSigPacketCheckSum = 0;
 	
@@ -400,6 +442,15 @@ boolean UdpCommandParser(void){
 			break;
 		case KEEPALIVE:
 			KeepAliveFunction();
+			break;
+		case CALL:
+			CallFunction();
+			break;
+		case OFFHOOK:
+			OffHookFunction();
+			break;
+		case ONHOOK:
+			OnHookFunction();
 			break;
 		
 	}
@@ -435,12 +486,18 @@ int main(){
 		/* Open UDP port 1000 for communication */
 		udp_open (udp_soc, UDPPORTNUMBER);
 	}
-  
+ 
+	udp_media_soc =  udp_get_socket(0, UDP_OPT_SEND_CS | UDP_OPT_CHK_CS, udp_media_callback);
+	if (udp_media_soc != 0) {
+		udp_open (udp_media_soc, UDPMEDIAPORT);
+	}
+	
 	tcp_soc = tcp_get_socket (TCP_TYPE_SERVER, 0, 30, tcp_callback);
 	if (tcp_soc != 0) {
 		/* Start listening on TCP port 2000 */
 		tcp_listen (tcp_soc, TCPPORTNUMBER);
 	}
+	
 	
 	
 //	delay(5000);
@@ -472,13 +529,13 @@ int main(){
 	
 	
 	
-	PrintDebug("\nSend DTMF 0 to Si3056");
+	//PrintDebug("\nSend DTMF 0 to Si3056");
 	/*for (i = 0 ; i < 11 ; i++){
 		SendDtmfTone((uint16*)DtmfCode[PhoneNumber[i]]);
 		delay(50);
 	}
 	delay(5000);*/
-	PrintDebug("\nEnd of Send Si3056");
+	//PrintDebug("\nEnd of Send Si3056");
 	SetResetIO(GPIOE, SI_OFHK, enmSet);			//Go to ON-HOOK
 	
 	
@@ -545,11 +602,12 @@ int main(){
 		
 		
 		if (DeviceState == enmOffHook) {
-			SendVoiceToPhone();		
+			SendVoiceToPhone();
+			RecieveVoiceFromPhone();
 		}
 			
 
-		if (DataReceivedFlag == True){
+		/*if (DataReceivedFlag == True){
 			DataReceivedFlag = False;
 			switch(TCPRxDataPtr[0]){
 				case 0x00:
@@ -591,7 +649,7 @@ int main(){
 					GPIOD -> ODR = (1 << 15);
 				break;
 			}
-		}
+		}*/
 	}
 	//LED1();
 }
